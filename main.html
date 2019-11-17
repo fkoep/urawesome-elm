@@ -18,6 +18,26 @@
       event.dataTransfer.setData('text/plain', null);
     });
 
+    /* HACK dragover doesn't interact with CSS's :hover, and there's no
+     * replacement pseudo-class currently, so for now we make do with an
+     * 'althover' class instead...
+     */
+    var althover = null;
+    function althoverBegin(ev) {
+      if (althover) althover.classList.remove('althover');
+      ev.target.classList.add('althover');
+      althover = ev.target;
+    }
+    function althoverEnd(ev) {
+      ev.target.classList.remove('althover');
+      if (althover === ev.target) althover = null;
+    }
+
+    document.body.addEventListener('dragenter', althoverBegin);
+    document.body.addEventListener('dragleave', althoverEnd);
+    document.body.addEventListener('mouseenter', althoverBegin);
+    document.body.addEventListener('mouseleave', althoverEnd);
+
     var app = Elm.Main.init({
       node: document.getElementById('elm')
     });

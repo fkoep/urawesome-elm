@@ -26,7 +26,7 @@
 .game.tafl .field.blank.targetable {
     background: lightgrey;
 }
-.game.tafl .field.blank.targetable:hover {
+.game.tafl .field.blank.targetable.althover {
     background: grey;
 }
     /* TODO anti-aliasing */
@@ -36,7 +36,7 @@
 .game.tafl .field.corner.targetable {
     background: repeating-linear-gradient(45deg, grey, grey 10%, lightgrey 10%, lightgrey 20%);
 }
-.game.tafl .field.corner.targetable:hover {
+.game.tafl .field.corner.targetable.althover {
     background: repeating-linear-gradient(45deg, grey, grey 10%, darkgrey 10%, darkgrey 20%);
 }
 .game.tafl .field.center {
@@ -45,7 +45,7 @@
 .game.tafl .field.center.targetable {
     background: repeating-radial-gradient(circle at center, grey, grey 20%, lightgrey 20%, lightgrey 40%);
 }
-.game.tafl .field.center.targetable:hover {
+.game.tafl .field.center.targetable.althover {
     background: repeating-radial-gradient(circle at center, darkgrey, darkgrey 20%, grey 20%, grey 40%);
 }
 
