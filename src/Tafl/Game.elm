@@ -41,10 +41,10 @@ canPlace p t =
         (_, Blank) -> True
         _ -> False
 
--- TODO field alias?
 fieldAssistsCapture: Piece -> Field -> State -> Bool
 fieldAssistsCapture p (t, o) s =
-    Maybe.map pieceOwner o == Just s.turn || not (canPlace p t) 
+    Maybe.map pieceOwner o == Just s.turn
+    || o == Nothing && not (canPlace p t) 
 
 edgeAssistsKingCapture: State -> Bool
 edgeAssistsKingCapture s =
