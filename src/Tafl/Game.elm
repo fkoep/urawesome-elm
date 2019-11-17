@@ -83,10 +83,13 @@ captures c s =
 
 walkDestinations: Piece -> Dir -> Coord -> State -> List Coord
 walkDestinations p d c s =
+    -- TODO neater way of doing this?
     case Board.field c s.board of
         (Just (t, Nothing)) ->
             if canPlace p t then
                 c :: walkDestinations p d (Coord.add c d) s
+            else if t == Center then
+                walkDestinations p d (Coord.add c d) s
             else
                 []
         _ -> []
