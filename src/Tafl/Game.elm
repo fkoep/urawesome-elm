@@ -117,7 +117,7 @@ hasEnded: State -> Bool
 hasEnded s =
     List.head (Board.findPieces ((==) King) s.board)
     |> Maybe.map(\(c, _) -> Board.tile c s.board == (Just Corner))
-    |> Maybe.map (\v -> v || not (hasEscapePath s)) -- TODO neater way of doing this?
+    -- |> Maybe.map (\v -> v || not (hasEscapePath s)) -- TODO neater way of doing this?
     |> Maybe.withDefault True
 
 -- +++++ Update +++++
