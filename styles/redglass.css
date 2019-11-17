@@ -1,0 +1,84 @@
+.game.tafl .board {
+    /* background: lightgrey; */
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    align-content: stretch;
+    width: 600px;
+    height: 600px;
+}
+
+.game.tafl .row {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    align-content: stretch;
+    flex: 1;
+}
+
+.game.tafl .field {
+    flex: 1;
+    border: 1px solid red;
+}
+.game.tafl .field.blank {
+    background: brown;
+}
+.game.tafl .field.blank.targetable {
+    background: lightgrey;
+}
+.game.tafl .field.blank.targetable:hover {
+    background: grey;
+}
+    /* TODO anti-aliasing */
+.game.tafl .field.corner {
+    background: repeating-linear-gradient(45deg, brown, brown 10%, red 10%, red 20%);
+}
+.game.tafl .field.corner.targetable {
+    background: repeating-linear-gradient(45deg, grey, grey 10%, lightgrey 10%, lightgrey 20%);
+}
+.game.tafl .field.corner.targetable:hover {
+    background: repeating-linear-gradient(45deg, grey, grey 10%, darkgrey 10%, darkgrey 20%);
+}
+.game.tafl .field.center {
+    background: repeating-radial-gradient(circle at center, brown, brown 20%, red 20%, red 40%);
+}
+.game.tafl .field.center.targetable {
+    background: repeating-radial-gradient(circle at center, grey, grey 20%, lightgrey 20%, lightgrey 40%);
+}
+.game.tafl .field.center.targetable:hover {
+    background: repeating-radial-gradient(circle at center, darkgrey, darkgrey 20%, grey 20%, grey 40%);
+}
+
+.game.tafl .piece {
+    height: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    border-radius: 50%;
+}
+.game.tafl .piece.king {
+    background: violet;
+}
+.game.tafl .piece.king.selectable {
+    border: 3px solid blue;
+}
+.game.tafl .piece.king.selected {
+    background: blue;
+}
+.game.tafl .piece.defender {
+    background: white;
+}
+.game.tafl .piece.defender.selectable {
+    border: 3px solid blue;
+}
+.game.tafl .piece.defender.selected {
+    background: blue;
+}
+.game.tafl .piece.attacker {
+    background: black;
+}
+.game.tafl .piece.attacker.selectable {
+    border: 3px solid green;
+}
+.game.tafl .piece.attacker.selected {
+    background: green;
+}

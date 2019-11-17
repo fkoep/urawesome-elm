@@ -1,0 +1,26 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Ursome-Elm</title>
+  <link rel="stylesheet" href="styles/redglass.css">
+  <script src="elm.js"></script>
+</head>
+
+<body>
+  <div id="elm"></div>
+  <script>
+    /* We need this on Firefox, according to
+     * https://benpaulhanna.com/basic-html5-drag-and-drop-with-elm.html
+     * TODO research if this is still an issue or can be resolved in elm
+     */
+    document.body.addEventListener('dragstart', function (event) {
+      event.dataTransfer.setData('text/plain', null);
+    });
+
+    var app = Elm.Main.init({
+      node: document.getElementById('elm')
+    });
+  </script>
+</body>
+</html>
