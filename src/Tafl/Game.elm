@@ -20,6 +20,9 @@ type alias State =
     , board: Board
     }
 
+init: Board -> State
+init b = { turn = Black, board = b }
+
 flipColor: Color -> Color
 flipColor c =
     case c of
@@ -81,32 +84,40 @@ captures c s =
 
 -- +++++ Movement +++++
 
-walkDestinations: Piece -> Dir -> Coord -> State -> List Coord
-walkDestinations p d c s =
+walkTargets: Piece -> Dir -> Coord -> State -> List Coord
+walkTargets p d c s =
     -- TODO neater way of doing this?
     case Board.field c s.board of
         (Just (t, Nothing)) ->
             if canPlace p t then
-                c :: walkDestinations p d (Coord.add c d) s
+                c :: walkTargets p d (Coord.add c d) s
             else if t == Center then
-                walkDestinations p d (Coord.add c d) s
+                walkTargets p d (Coord.add c d) s
             else
                 []
         _ -> []
 
-destinations: Coord -> Piece -> State -> List Coord
-destinations c p s =
+targets: Coord -> Piece -> State -> List Coord
+targets c p s =
     Coord.directions
-    |> List.map (\d -> walkDestinations p d (Coord.add c d) s)
+    |> List.map (\d -> walkTargets p d (Coord.add c d) s)
     |> List.concat 
 
-moves: State -> Dict Coord (List Coord)
+-- moves: State -> Dict Coord (List Coord)
+-- moves s =
+--     Board.findPieces (\p -> pieceOwner p == s.turn) s.board
+--     -- TODO
+--     -- Board.findPieces ((==) s.turn << pieceOwner) s.board
+--     |> List.map (\(c, p) -> (c, targets c p s))
+--     |> Dict.fromList
+
+moves: State -> List Action
 moves s =
     Board.findPieces (\p -> pieceOwner p == s.turn) s.board
     -- TODO
     -- Board.findPieces ((==) s.turn << pieceOwner) s.board
-    |> List.map (\(c, p) -> (c, destinations c p s))
-    |> Dict.fromList
+    |> List.map (\(c, p) -> targets c p s |> List.map (Move c))
+    |> List.concat
 
 -- +++++ Win Conditions +++++
 
@@ -116,20 +127,43 @@ hasEscapePath s = True -- TODO
 hasEnded: State -> Bool
 hasEnded s =
     List.head (Board.findPieces ((==) King) s.board)
-    |> Maybe.map(\(c, _) -> Board.tile c s.board == (Just Corner))
+    |> Maybe.map (\(c, _) -> Board.tile c s.board == Just Corner)
     -- |> Maybe.map (\v -> v || not (hasEscapePath s)) -- TODO neater way of doing this?
     |> Maybe.withDefault True
 
 -- +++++ Update +++++
 
-move: Coord -> Coord -> State -> (Dict Coord (List Coord), State)
-move from to s =
+move: Action -> State -> (State, List Change, List Action)
+move (Move from to) s =
     -- TODO neater way of doing this?
     let s2 = { s | board = Board.movePiece from to s.board } in
     let caps = captures to s2 in
     let s3 = { s2 | board = List.foldl Board.takePiece s2.board caps } in
     if hasEnded s3 then
-        (Dict.empty, s3)
+        (s3, [], [])
     else
         let s4 = { s3 | turn = flipColor s3.turn } in
-        (moves s4, s4)
+        (s4, [], moves s4)
+
+-- +++++ Game +++++
+-- TODO move up
+type Action = Move Coord Coord
+type Change = Moved Coord Coord | Removed Coord
+
+-- TODO move outside
+type alias Game =
+    { state: State
+    , changes: List Change
+    , actions: List Action
+    }
+
+-- TODO naming?
+begin: Board -> Game
+begin b =
+    let s = init b in
+    { state = s, changes = [], actions = moves s }
+
+update: Action -> Game -> Game
+update act game =
+    let (state, changes, actions) = move act game.state in
+    { state = state, changes = changes, actions = actions }
