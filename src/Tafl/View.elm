@@ -1,4 +1,4 @@
-module Tafl.Web exposing (..)
+module Tafl.View exposing (..)
 
 import Dict exposing (Dict)
 import Dict as Dict
