@@ -2,35 +2,15 @@ module Tafl.View exposing (..)
 
 import Dict exposing (Dict)
 import Dict as Dict
-import Json.Encode as Encode
-import Json.Decode as Decode
 import Html exposing (Html, div)
 import Html.Attributes exposing (attribute, class, draggable)
 import Html.Events exposing (onClick)
-import Html.Events as Events
 import Coord exposing (Coord, Dir)
 import Coord as Coord
 import Board as Board
 import Tafl.Game exposing (Game, Action(..), Piece(..), Tile(..), Field)
 import Tafl.Game as Game
-
-optList: List (a, Bool) -> List a
-optList = List.filter (Tuple.second) >> List.map (Tuple.first)
-
--- TODO do we need this?
-encodeCoord: Coord -> Encode.Value
-encodeCoord (x, y) = Encode.list Encode.int [x, y]
-
--- TODO do we need this?
-coordDecoder: Decode.Decoder Coord
-coordDecoder = Decode.map2 Tuple.pair (Decode.index 0 Decode.int) (Decode.index 1 Decode.int)
-
--- TODO make drag-over in relation to CSS-:hover() work...
--- TODO how does Decode.succeed work here?
-onDragStart msg = Events.on "dragstart" <| Decode.succeed msg
-onDragEnd msg = Events.on "dragend" <| Decode.succeed msg
-onDragOver msg = Events.preventDefaultOn "dragover" <| Decode.succeed (msg, True)
-onDrop msg = Events.preventDefaultOn "drop" <| Decode.succeed (msg, True)
+import WebUtil exposing (..)
 
 type Event
     = MovePiece Coord Coord
