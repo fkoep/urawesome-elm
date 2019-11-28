@@ -11,6 +11,7 @@ import Html.Events as Events
 import Coord exposing (Coord, Dir)
 import Coord as Coord
 import Board as Board
+import Tafl.Game exposing (Game, Action(..), Piece(..), Tile(..), Field)
 import Tafl.Game as Game
 
 optList: List (a, Bool) -> List a
@@ -31,103 +32,112 @@ onDragEnd msg = Events.on "dragend" <| Decode.succeed msg
 onDragOver msg = Events.preventDefaultOn "dragover" <| Decode.succeed (msg, True)
 onDrop msg = Events.preventDefaultOn "drop" <| Decode.succeed (msg, True)
 
-type Msg = SelectPiece Coord | UnselectPiece | TargetField Coord | HoverField
+type Event
+    = MovePiece Coord Coord
+    | SelectPiece Coord
+    | UnselectPiece
+    | TargetField Coord
+    | HoverField -- TODO remove?
 
-type alias Model = 
+type alias View =
     { selected: Maybe Coord
-    , moves: Dict Coord (List Coord)
-    , state: Game.State
     }
 
-init: Game.State -> Model
-init s = { selected = Nothing, moves = Game.moves s, state = s }
+init: View
+init = { selected = Nothing }
 
-update: Msg -> Model -> Model
-update msg model =
-    case msg of
-        (SelectPiece c) -> { model | selected = Just c }
-        UnselectPiece -> { model | selected = Nothing }
-        (TargetField to) ->
-            model.selected
-            |> Maybe.map (\from ->
-                let (ms, s) = Game.move from to model.state in 
-                { selected = Nothing, moves = ms, state = s })
-            |> Maybe.withDefault model
-        HoverField -> model
+-- TODO naming?
+gameUpdate: Action -> View -> View
+gameUpdate _ view = view
+
+-- TODO naming?
+viewUpdate: Event -> View -> (Maybe Action, View)
+viewUpdate evt view =
+    case evt of
+        (MovePiece from to) -> (Just (Move from to), { view | selected = Nothing })
+        (SelectPiece c) -> (Nothing, { view | selected = Just c })
+        UnselectPiece -> (Nothing, { view | selected = Nothing })
+        (TargetField to) -> (Maybe.map (\from -> Move from to) view.selected , view)
+        HoverField -> (Nothing, view)
 
 pieceClass p =
     case p of
-        Game.Attacker -> "attacker"
-        Game.Defender -> "defender"
-        Game.King -> "king"
+        Attacker -> "attacker"
+        Defender -> "defender"
+        King -> "king"
         
 tileClass t =
     case t of
-        Game.Blank -> "blank"
-        Game.Corner -> "corner"
-        Game.Center -> "center"
+        Blank -> "blank"
+        Corner -> "corner"
+        Center -> "center"
 
-canUnselectPiece model y x =
-    model.selected == Just (x, y)
+canUnselectPiece game view c =
+    view.selected == Just c
 
-canSelectPiece model y x =
-    not (canUnselectPiece model y x)
-    && (model.moves
-        |> Dict.get (x, y)
-        |> Maybe.map (not << List.isEmpty)
-        |> Maybe.withDefault False)
+canSelectPiece game view c =
+    not (canUnselectPiece game view c)
+    && (game.actions
+        |> List.filter (\(Move from _) -> from == c)
+        |> (not << List.isEmpty))
 
-renderPiece model y x p =
-    let sel = canSelectPiece model y x in
-    let unsel = canUnselectPiece model y x in
+renderPiece: Game -> View -> Int -> Int -> Piece -> Html Event
+renderPiece game view y x piece =
+    let sel = canSelectPiece game view (x, y) in
+    let unsel = canUnselectPiece game view (x, y) in
     div
         (optList
             [ (class "piece", True)
-            , (class (pieceClass p), True)
+            , (class <| pieceClass piece, True)
             , (class "selectable", sel)
             , (class "selected", unsel)
-            , (onClick (SelectPiece (x, y)), sel)
+            , (onClick <| SelectPiece (x, y), sel)
             , (onClick UnselectPiece, unsel)
             , (draggable "true", sel || unsel)
-            , (onDragStart (SelectPiece (x, y)), sel)
+            , (onDragStart <| SelectPiece (x, y), sel)
             ])
         []
-        
-canTargetField model y x =
-    model.selected
-    |> Maybe.map (\c -> Dict.get c model.moves) 
-    |> Maybe.andThen identity
-    |> Maybe.map (List.member (x, y))
-    |> Maybe.withDefault False
 
-renderField model y x (t, o) =
-    let target = canTargetField model y x in
+canTargetField game view to =
+    view.selected
+    |> Maybe.map (\from -> game.actions
+        |> List.filter (\(Move from2 _) -> from == from2)
+        |> List.map (\(Move _ to2) -> to2)
+        |> List.member to)
+    |> Maybe.withDefault False
+        
+renderField: Game -> View -> Int -> Int -> Field -> Html Event
+renderField game view y x (tile, occ) =
+    let target = canTargetField game view (x, y) in
     div
         (optList 
             [ (class "field", True)
-            , (class (tileClass t), True)
-            , (class ("targetable"), target)
-            , (onClick (TargetField (x, y)), target)
+            , (class <| tileClass tile, True)
+            , (class "targetable", target)
+            , (onClick <| TargetField (x, y), target)
             , (onDragOver HoverField, target)
-            , (onDrop (TargetField (x, y)), target)
+            , (onDrop <| TargetField (x, y), target)
             ])
-        [ o
-        |> Maybe.map (renderPiece model y x)
-        |> Maybe.withDefault (div [] [])
-        ]
+        (occ
+            |> Maybe.map (List.singleton << renderPiece game view y x)
+            |> Maybe.withDefault [])
 
-renderRow model y row =
+        
+renderRow: Game -> View -> Int -> List Field -> Html Event
+renderRow game view y row =
     div 
         [ class "row" ]
-        <| List.indexedMap (renderField model y) row
+        (List.indexedMap (renderField game view y) row)
 
-renderBoard model b =
+renderBoard: Game -> View -> Html Event
+renderBoard game view =
     div 
         [ class "board" ]
-        <| List.indexedMap (renderRow model) (Board.toFields b)
+        (List.indexedMap (renderRow game view) (Board.toFields game.state.board))
 
-view: Model -> Html Msg
-view model = 
+-- TODO naming?
+render: Game -> View -> Html Event
+render game view =
     div 
         [ class "game", class "tafl" ]
-        [ renderBoard model model.state.board ]
+        [ renderBoard game view ]
