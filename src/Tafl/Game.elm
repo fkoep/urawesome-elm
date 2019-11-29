@@ -62,7 +62,7 @@ positionAssistsCapture p c s =
 captureDirs: Dir -> Piece -> List Dir
 captureDirs d p =
     case p of
-       King -> [d, Coord.perp d, Coord.perp d]
+       King -> [d, Coord.perp d, Coord.rperp d]
        _ -> [d]
 
 testCapture: Dir -> Coord -> State -> Bool
