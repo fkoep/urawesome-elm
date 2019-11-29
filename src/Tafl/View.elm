@@ -23,10 +23,11 @@ type alias View =
     { selected: Maybe Coord
     }
 
-init: View
-init = { selected = Nothing }
+create: View
+create = { selected = Nothing }
 
 -- TODO naming?
+-- TODO remove?
 gameUpdate: Action -> View -> View
 gameUpdate _ view = view
 

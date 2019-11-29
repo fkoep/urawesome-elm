@@ -158,8 +158,8 @@ type alias Game =
     }
 
 -- TODO naming?
-begin: Board -> Game
-begin b =
+create: Board -> Game
+create b =
     let s = init b in
     { state = s, changes = [], actions = moves s }
 
