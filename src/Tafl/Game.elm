@@ -21,129 +21,119 @@ type alias State =
     }
 
 init: Board -> State
-init b = { turn = Black, board = b }
+init board = { turn = Black, board = board }
 
 flipColor: Color -> Color
-flipColor c =
-    case c of
+flipColor col =
+    case col of
         White -> Black
         Black -> White
 
 pieceOwner: Piece -> Color
-pieceOwner p =
-    case p of
+pieceOwner piece =
+    case piece of
         Attacker -> Black
         _ -> White
 
 -- +++++ Capturing +++++
 
 canPlace: Piece -> Tile -> Bool
-canPlace p t =
-    case (p, t) of
+canPlace piece tile =
+    case (piece, tile) of
         (King, _) -> True
         (_, Blank) -> True
         _ -> False
 
 fieldAssistsCapture: Piece -> Field -> State -> Bool
-fieldAssistsCapture p (t, o) s =
-    Maybe.map pieceOwner o == Just s.turn
-    || o == Nothing && not (canPlace p t) 
+fieldAssistsCapture piece (tile, occ) st =
+    Maybe.map pieceOwner occ == Just st.turn
+    || occ == Nothing && not (canPlace piece tile) 
 
 edgeAssistsKingCapture: State -> Bool
-edgeAssistsKingCapture s =
-    1 == List.length (Board.findPieces (\p -> pieceOwner p == White) s.board)
+edgeAssistsKingCapture st =
+    1 == List.length (Board.findPieces (\p -> pieceOwner p == White) st.board)
 
 positionAssistsCapture: Piece -> Coord -> State -> Bool
-positionAssistsCapture p c s =
-    Board.field c s.board
-    |> Maybe.map (\f -> fieldAssistsCapture p f s)
-    |> Maybe.withDefault (p == King && edgeAssistsKingCapture s)
+positionAssistsCapture piece pos st =
+    Board.field pos st.board
+    |> Maybe.map (\f -> fieldAssistsCapture piece f st)
+    |> Maybe.withDefault (piece == King && edgeAssistsKingCapture st)
 
-captureDirs: Dir -> Piece -> List Dir
-captureDirs d p =
-    case p of
-       King -> [d, Coord.perp d, Coord.rperp d]
-       _ -> [d]
+assistDirs: Piece -> Dir -> List Dir
+assistDirs piece cap =
+    case piece of
+       King -> [cap, Coord.perp cap, Coord.rperp cap]
+       _ -> [cap]
 
 testCapture: Dir -> Coord -> State -> Bool
-testCapture d c s =
+testCapture cap pos st =
     -- TODO neater way of doing this?
-    Board.piece c s.board
-    |> Maybe.andThen (\p -> if pieceOwner p /= s.turn then Just p else Nothing)
-    |> Maybe.map (\p ->
-        captureDirs d p
-        |> List.map (Coord.add c)
-        |> List.all (\cc -> positionAssistsCapture p cc s))
+    Board.piece pos st.board
+    |> Maybe.andThen (\p -> if pieceOwner p /= st.turn then Just p else Nothing)
+    |> Maybe.map (\piece ->
+        assistDirs piece cap
+        |> List.map (Coord.add pos)
+        |> List.all (\apos -> positionAssistsCapture piece apos st))
     |> Maybe.withDefault False
 
 captures: Coord -> State -> List Coord
-captures c s =
+captures pos st =
     Coord.directions
-    |> List.filter (\d -> testCapture d (Coord.add c d) s)
-    |> List.map (Coord.add c)
+    |> List.filter (\dir -> testCapture dir (Coord.add pos dir) st)
+    |> List.map (Coord.add pos)
 
 -- +++++ Movement +++++
 
 walkTargets: Piece -> Dir -> Coord -> State -> List Coord
-walkTargets p d c s =
+walkTargets piece dir pos st =
     -- TODO neater way of doing this?
-    case Board.field c s.board of
-        (Just (t, Nothing)) ->
-            if canPlace p t then
-                c :: walkTargets p d (Coord.add c d) s
-            else if t == Center then
-                walkTargets p d (Coord.add c d) s
+    case Board.field pos st.board of
+        (Just (tile, Nothing)) ->
+            if canPlace piece tile then
+                pos :: walkTargets piece dir (Coord.add pos dir) st
+            else if tile == Center then
+                walkTargets piece dir (Coord.add pos dir) st
             else
                 []
         _ -> []
 
 targets: Coord -> Piece -> State -> List Coord
-targets c p s =
+targets pos piece st =
     Coord.directions
-    |> List.map (\d -> walkTargets p d (Coord.add c d) s)
+    |> List.map (\dir -> walkTargets piece dir (Coord.add pos dir) st)
     |> List.concat 
 
--- moves: State -> Dict Coord (List Coord)
--- moves s =
---     Board.findPieces (\p -> pieceOwner p == s.turn) s.board
---     -- TODO
---     -- Board.findPieces ((==) s.turn << pieceOwner) s.board
---     |> List.map (\(c, p) -> (c, targets c p s))
---     |> Dict.fromList
-
 moves: State -> List Action
-moves s =
-    Board.findPieces (\p -> pieceOwner p == s.turn) s.board
-    -- TODO
-    -- Board.findPieces ((==) s.turn << pieceOwner) s.board
-    |> List.map (\(c, p) -> targets c p s |> List.map (Move c))
+moves st =
+    Board.findPieces (\p -> pieceOwner p == st.turn) st.board
+    |> List.map (\(pos, piece) -> targets pos piece st |> List.map (Move pos))
     |> List.concat
 
 -- +++++ Win Conditions +++++
 
 hasEscapePath: State -> Bool
-hasEscapePath s = True -- TODO
+hasEscapePath st = True -- TODO
 
 hasEnded: State -> Bool
-hasEnded s =
-    List.head (Board.findPieces ((==) King) s.board)
-    |> Maybe.map (\(c, _) -> Board.tile c s.board == Just Corner)
+hasEnded st =
+    List.head (Board.findPieces ((==) King) st.board)
+    |> Maybe.map (\(pos, _) -> Board.tile pos st.board == Just Corner)
     -- |> Maybe.map (\v -> v || not (hasEscapePath s)) -- TODO neater way of doing this?
     |> Maybe.withDefault True
 
 -- +++++ Update +++++
 
 move: Action -> State -> (State, List Change, List Action)
-move (Move from to) s =
+move (Move from to) st =
     -- TODO neater way of doing this?
-    let s2 = { s | board = Board.movePiece from to s.board } in
-    let caps = captures to s2 in
-    let s3 = { s2 | board = List.foldl Board.takePiece s2.board caps } in
-    if hasEnded s3 then
-        (s3, [], [])
+    let st2 = { st | board = Board.movePiece from to st.board } in
+    let caps = captures to st2 in
+    let st3 = { st2 | board = List.foldl Board.takePiece st2.board caps } in
+    if hasEnded st3 then
+        (st3, [], [])
     else
-        let s4 = { s3 | turn = flipColor s3.turn } in
-        (s4, [], moves s4)
+        let st4 = { st3 | turn = flipColor st3.turn } in
+        (st4, [], moves st4)
 
 -- +++++ Game +++++
 -- TODO move up
