@@ -2,8 +2,6 @@
 -- module Tafl.Game exposing (Color, Piece, Tile, State, Action, Change, update)
 module Tafl.Game exposing (..)
 
-import Dict exposing (Dict)
-import Dict as Dict -- TODO get rid of this?
 import Coord exposing (Coord, Dir)
 import Coord as Coord
 import Board as Board
@@ -20,17 +18,14 @@ type alias State =
     , board: Board
     }
 
-init: Board -> State
-init board = { turn = Black, board = board }
-
 flipColor: Color -> Color
 flipColor col =
     case col of
         White -> Black
         Black -> White
 
-pieceOwner: Piece -> Color
-pieceOwner piece =
+pieceColor: Piece -> Color
+pieceColor piece =
     case piece of
         Attacker -> Black
         _ -> White
@@ -46,15 +41,15 @@ canPlace piece tile =
 
 fieldAssistsCapture: Piece -> Field -> State -> Bool
 fieldAssistsCapture piece (tile, occ) st =
-    Maybe.map pieceOwner occ == Just st.turn
+    Maybe.map pieceColor occ == Just st.turn
     || occ == Nothing && not (canPlace piece tile) 
 
 edgeAssistsKingCapture: State -> Bool
 edgeAssistsKingCapture st =
-    1 == List.length (Board.findPieces (\p -> pieceOwner p == White) st.board)
+    1 == List.length (Board.findPieces (\p -> pieceColor p == White) st.board)
 
-positionAssistsCapture: Piece -> Coord -> State -> Bool
-positionAssistsCapture piece pos st =
+assistsCapture: Piece -> Coord -> State -> Bool
+assistsCapture piece pos st =
     Board.field pos st.board
     |> Maybe.map (\f -> fieldAssistsCapture piece f st)
     |> Maybe.withDefault (piece == King && edgeAssistsKingCapture st)
@@ -67,13 +62,14 @@ assistDirs piece cap =
 
 testCapture: Dir -> Coord -> State -> Bool
 testCapture cap pos st =
-    -- TODO neater way of doing this?
     Board.piece pos st.board
-    |> Maybe.andThen (\p -> if pieceOwner p /= st.turn then Just p else Nothing)
     |> Maybe.map (\piece ->
-        assistDirs piece cap
-        |> List.map (Coord.add pos)
-        |> List.all (\apos -> positionAssistsCapture piece apos st))
+        if pieceColor piece == flipColor st.turn then
+            assistDirs piece cap
+            |> List.map (Coord.add pos)
+            |> List.all (\pos2 -> assistsCapture piece pos2 st)
+        else
+            False)
     |> Maybe.withDefault False
 
 captures: Coord -> State -> List Coord
@@ -86,7 +82,6 @@ captures pos st =
 
 walkTargets: Piece -> Dir -> Coord -> State -> List Coord
 walkTargets piece dir pos st =
-    -- TODO neater way of doing this?
     case Board.field pos st.board of
         (Just (tile, Nothing)) ->
             if canPlace piece tile then
@@ -103,9 +98,9 @@ targets pos piece st =
     |> List.map (\dir -> walkTargets piece dir (Coord.add pos dir) st)
     |> List.concat 
 
-moves: State -> List Action
-moves st =
-    Board.findPieces (\p -> pieceOwner p == st.turn) st.board
+actions: State -> List Action
+actions st =
+    Board.findPieces (\p -> pieceColor p == st.turn) st.board
     |> List.map (\(pos, piece) -> targets pos piece st |> List.map (Move pos))
     |> List.concat
 
@@ -125,7 +120,6 @@ hasEnded st =
 
 move: Action -> State -> (State, List Change, List Action)
 move (Move from to) st =
-    -- TODO neater way of doing this?
     let st2 = { st | board = Board.movePiece from to st.board } in
     let caps = captures to st2 in
     let st3 = { st2 | board = List.foldl Board.takePiece st2.board caps } in
@@ -133,27 +127,25 @@ move (Move from to) st =
         (st3, [], [])
     else
         let st4 = { st3 | turn = flipColor st3.turn } in
-        (st4, [], moves st4)
+        (st4, [], actions st4)
 
 -- +++++ Game +++++
--- TODO move up
+
 type Action = Move Coord Coord
 type Change = Moved Coord Coord | Removed Coord
 
--- TODO move outside
 type alias Game =
     { state: State
     , changes: List Change
     , actions: List Action
     }
 
--- TODO naming?
 create: Board -> Game
-create b =
-    let s = init b in
-    { state = s, changes = [], actions = moves s }
+create board =
+    let st = { turn = Black, board = board } in
+    { state = st, changes = [], actions = actions st }
 
 update: Action -> Game -> Game
 update act game =
-    let (state, changes, actions) = move act game.state in
-    { state = state, changes = changes, actions = actions }
+    let (st, chgs, acts) = move act game.state in
+    { state = st, changes = chgs, actions = acts }
