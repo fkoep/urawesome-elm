@@ -2,13 +2,13 @@ module Tafl.View exposing (..)
 
 import Dict exposing (Dict)
 import Dict as Dict
-import Html exposing (Html, div)
+import Html exposing (Html, div, h2, text)
 import Html.Attributes exposing (attribute, class, draggable)
 import Html.Events exposing (onClick)
 import Coord exposing (Coord, Dir)
 import Coord as Coord
 import Board as Board
-import Tafl.Game exposing (Game, Action(..), Piece(..), Tile(..), Field)
+import Tafl.Game exposing (Game, Action(..), Color(..), Piece(..), Tile(..), Field)
 import Tafl.Game as Game
 import WebUtil exposing (..)
 
@@ -116,9 +116,21 @@ renderBoard game view =
         [ class "board" ]
         (List.indexedMap (renderRow game view) (Board.toFields game.state.board))
 
+colorName: Color -> String
+colorName col =
+    case col of
+        Black -> "black"
+        White -> "white"
+
+renderTurn: Game -> View -> Html Event
+renderTurn game view =
+    h2 [] [text <| "Turn: " ++ colorName game.state.turn ]   
+
 -- TODO naming?
 render: Game -> View -> Html Event
 render game view =
     div 
         [ class "game", class "tafl" ]
-        [ renderBoard game view ]
+        [ renderBoard game view
+        , renderTurn game view
+        ]
